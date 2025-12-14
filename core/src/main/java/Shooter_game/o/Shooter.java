@@ -36,6 +36,9 @@ public class Shooter extends ApplicationAdapter {
     private Texture circleTexture;
     private Texture whitePixel; // used for UI rectangles
 
+    // New: enemy rocket texture
+    private Texture enemyTexture;
+
     // ================== GAME OBJECTS ==================
     private Player player;
     private Array<Bullet> bullets;
@@ -75,6 +78,9 @@ public class Shooter extends ApplicationAdapter {
         batch = new SpriteBatch();
         circleTexture = createCircleTexture(64);
         whitePixel = createPixelTexture();
+
+        // Load your rocket texture (put rocket.png into assets folder)
+        enemyTexture = new Texture(Gdx.files.internal("rocket.png"));
 
         player = new Player(WIDTH / 2f, HEIGHT / 2f);
         bullets = new Array<>();
@@ -174,7 +180,7 @@ public class Shooter extends ApplicationAdapter {
         batch.begin();
         player.draw(batch);
         for (Bullet b : bullets) b.draw(batch);
-        for (Enemy e : enemies) e.draw(batch);
+        for (Enemy e : enemies) e.draw(batch); // now draws rocket texture rotated
         for (int i = 0; i < hudCache.length; i++)
             fontSmall.draw(batch, hudCache[i], 20, HEIGHT - 20 - i * 35);
 
@@ -282,6 +288,7 @@ public class Shooter extends ApplicationAdapter {
         batch.dispose();
         circleTexture.dispose();
         if (whitePixel != null) whitePixel.dispose();
+        if (enemyTexture != null) enemyTexture.dispose(); // dispose the rocket texture
         fontBig.dispose();
         fontMed.dispose();
         fontSmall.dispose();
@@ -374,6 +381,10 @@ public class Shooter extends ApplicationAdapter {
     class Enemy {
         float x, y, speed;
         Circle circle = new Circle();
+        float rotationDeg = 0f;
+
+        // draw size for the rocket (pixels)
+        private final float drawSize = 48f; // adjust if your rocket image is larger/smaller
 
         Enemy() {
             // Use base speed multiplied by current multiplier so later spawned enemies are faster
@@ -384,6 +395,8 @@ public class Shooter extends ApplicationAdapter {
             y = HEIGHT / 2f + MathUtils.sin(a) * d;
             circle.radius = 18;
             circle.setPosition(x, y);
+            // initial rotation random
+            rotationDeg = MathUtils.random(0f, 360f);
         }
 
         void update(float delta, float px, float py) {
@@ -392,14 +405,38 @@ public class Shooter extends ApplicationAdapter {
                 dir.nor().scl(speed * delta);
                 x += dir.x;
                 y += dir.y;
+                // set rotation to point at the player
+                rotationDeg = new Vector2(px - x, py - y).angleDeg();
             }
             circle.setPosition(x, y);
         }
 
         void draw(SpriteBatch b) {
-            b.setColor(Color.RED);
-            b.draw(circleTexture, x - 18, y - 18, 36, 36);
-            b.setColor(Color.WHITE);
+            if (enemyTexture != null) {
+                // Draw the rocket texture rotated so it faces the player.
+                // The draw method used below sets the origin to the center of the texture
+                // and rotates by rotationDeg degrees.
+                float half = drawSize / 2f;
+                b.setColor(Color.WHITE);
+                b.draw(enemyTexture,
+                        x - half,             // x to draw (bottom-left)
+                        y - half,             // y to draw
+                        half,                 // originX (rotation origin)
+                        half,                 // originY
+                        drawSize,             // width
+                        drawSize,             // height
+                        1f,                   // scaleX
+                        1f,                   // scaleY
+                        rotationDeg,          // rotation in degrees
+                        0, 0,                // srcX, srcY
+                        enemyTexture.getWidth(), enemyTexture.getHeight(), // srcW, srcH
+                        false, false);        // flipX, flipY
+            } else {
+                // fallback: draw red circle if texture missing
+                b.setColor(Color.RED);
+                b.draw(circleTexture, x - 18, y - 18, 36, 36);
+                b.setColor(Color.WHITE);
+            }
         }
     }
 }
