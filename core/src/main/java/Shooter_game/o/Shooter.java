@@ -20,7 +20,6 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.TimeUtils;
 
 public class Shooter extends ApplicationAdapter {
-    // ================== SETTINGS ==================
     private static final int WIDTH = 1000;
     private static final int HEIGHT = 700;
     private static final float PLAYER_SPEED = 320f;
@@ -30,50 +29,40 @@ public class Shooter extends ApplicationAdapter {
     private static final int SPAWN_INTERVAL_MS = 900;
     private static final int TOTAL_ENEMIES = 100; // fixed total enemies
 
-    // ================== RENDERING ==================
     private OrthographicCamera camera;
     private SpriteBatch batch;
     private Texture circleTexture;
-    private Texture whitePixel; // used for UI rectangles
+    private Texture whitePixel;
 
-    // Textures
-    private Texture enemyTexture;   // rocket.png
-    private Texture playerTexture;  // warrior.png
+    private Texture enemyTexture;
+    private Texture playerTexture;
 
-    // Rotation offsets (adjust depending on how the PNG is oriented)
-    // If your sprite faces up, use -90f. If it faces right, use 0f.
     private static final float ENEMY_ROTATION_OFFSET = 0f;
     private static final float PLAYER_ROTATION_OFFSET = 0f;
 
-    // ================== GAME OBJECTS ==================
     private Player player;
     private Array<Bullet> bullets;
     private Array<Enemy> enemies;
 
-    // ================== HUD ==================
     private BitmapFont fontBig, fontMed, fontSmall;
-    private GlyphLayout[] hudCache = new GlyphLayout[3]; // Time, Killed, Score
+    private GlyphLayout[] hudCache = new GlyphLayout[3];
 
-    // ================== GAME STATE ==================
     private int score = 0;
     private int enemiesSpawned = 0;
     private int kills = 0;
     private long lastShotTime = 0;
     private long lastSpawnTime = 0;
-    private String gameState = "playing"; // playing | win | lose
+    private String gameState = "playing";
 
-    // timer now counts up from 0
     private float elapsedTime = 0f;
 
-    // enemy speed multiplier increases every 10 kills
     private float enemySpeedMultiplier = 1f;
-    private final float SPEED_INCREASE_FACTOR = 1.25f; // change to tweak how much faster enemies get every 10 kills
+    private final float SPEED_INCREASE_FACTOR = 1.25f;
 
-    // UI button for Play Again
     private static final float BUTTON_W = 220f;
-    private static final float BUTTON_H = 35f; // height of the button
-    private static final float BUTTON_TOP_MARGIN = 60f; // increased margin between kills text and button
-    private float buttonX = 0f, buttonY = 0f; // will be set each frame in drawEndScreen
+    private static final float BUTTON_H = 35f;
+    private static final float BUTTON_TOP_MARGIN = 60f;
+    private float buttonX = 0f, buttonY = 0f;
 
     @Override
     public void create() {
@@ -85,7 +74,6 @@ public class Shooter extends ApplicationAdapter {
         circleTexture = createCircleTexture(64);
         whitePixel = createPixelTexture();
 
-        // Load assets: put rocket.png and warrior.png in your assets folder
         enemyTexture = new Texture(Gdx.files.internal("rocket.png"));
         playerTexture = new Texture(Gdx.files.internal("warrior.png"));
 
@@ -108,10 +96,8 @@ public class Shooter extends ApplicationAdapter {
     private void update(float delta) {
         if (!gameState.equals("playing")) return;
 
-        // timer counts up
         elapsedTime += delta;
 
-        // Spawn enemies gradually until TOTAL_ENEMIES reached
         if (enemiesSpawned < TOTAL_ENEMIES &&
                 TimeUtils.millis() - lastSpawnTime > SPAWN_INTERVAL_MS) {
             enemies.add(new Enemy());
@@ -122,7 +108,6 @@ public class Shooter extends ApplicationAdapter {
 
         player.update(delta);
 
-        // Shooting
         if (Gdx.input.isButtonPressed(Input.Buttons.LEFT)) {
             long now = TimeUtils.millis();
             if (now - lastShotTime > SHOOT_DELAY_MS) {
@@ -131,17 +116,14 @@ public class Shooter extends ApplicationAdapter {
             }
         }
 
-        // Update bullets
         for (int i = bullets.size - 1; i >= 0; i--) {
             Bullet b = bullets.get(i);
             b.update(delta);
             if (b.isOffscreen()) bullets.removeIndex(i);
         }
 
-        // Update enemies
         for (Enemy e : enemies) e.update(delta, player.x, player.y);
 
-        // Bullet-enemy collisions
         for (int i = bullets.size - 1; i >= 0; i--) {
             Bullet b = bullets.get(i);
             for (int j = enemies.size - 1; j >= 0; j--) {
@@ -151,10 +133,8 @@ public class Shooter extends ApplicationAdapter {
                     enemies.removeIndex(j);
                     score += 10;
                     kills++;
-                    // every 10 kills increase speed multiplier for remaining enemies
                     if (kills % 10 == 0 && kills <= TOTAL_ENEMIES) {
                         enemySpeedMultiplier *= SPEED_INCREASE_FACTOR;
-                        // apply new speed to all currently alive enemies
                         for (Enemy en : enemies) en.speed = ENEMY_BASE_SPEED * enemySpeedMultiplier;
                     }
                     updateHud();
@@ -163,7 +143,6 @@ public class Shooter extends ApplicationAdapter {
             }
         }
 
-        // Player-enemy collisions
         for (Enemy e : enemies) {
             if (Intersector.overlaps(player.circle, e.circle)) {
                 gameState = "lose";
@@ -171,7 +150,6 @@ public class Shooter extends ApplicationAdapter {
             }
         }
 
-        // Win condition: killed all enemies
         if (kills >= TOTAL_ENEMIES) {
             gameState = "win";
         }
@@ -187,7 +165,7 @@ public class Shooter extends ApplicationAdapter {
         batch.begin();
         player.draw(batch);
         for (Bullet b : bullets) b.draw(batch);
-        for (Enemy e : enemies) e.draw(batch); // draws rocket with rotation
+        for (Enemy e : enemies) e.draw(batch); // vizato raktet me mundsi rrotullmi
         for (int i = 0; i < hudCache.length; i++)
             fontSmall.draw(batch, hudCache[i], 20, HEIGHT - 20 - i * 35);
 
@@ -195,7 +173,6 @@ public class Shooter extends ApplicationAdapter {
 
         batch.end();
 
-        // handle input on end screen: if Play Again pressed, restart; otherwise do nothing.
         if (!gameState.equals("playing") && Gdx.input.isButtonJustPressed(Input.Buttons.LEFT)) {
             Vector3 mp = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
             camera.unproject(mp);
@@ -210,7 +187,6 @@ public class Shooter extends ApplicationAdapter {
     }
 
     private void drawEndScreen() {
-        // Draw semi-transparent centered panel
         float panelW = 520f;
         float panelH = 260f;
         float panelX = WIDTH / 2f - panelW / 2f;
@@ -234,30 +210,23 @@ public class Shooter extends ApplicationAdapter {
         GlyphLayout s = new GlyphLayout(fontMed, sub);
         GlyphLayout k = new GlyphLayout(fontMed, killsLine);
 
-        // title
         fontBig.setColor(gameState.equals("win") ? Color.GREEN : Color.RED);
         fontBig.draw(batch, t, WIDTH / 2f - t.width / 2f, panelY + panelH - 30);
 
-        // subtitle
         fontMed.setColor(Color.WHITE);
         fontMed.draw(batch, s, WIDTH / 2f - s.width / 2f, panelY + panelH - 90);
 
-        // kills (baseline)
         float killsY = panelY + panelH - 140;
         fontMed.draw(batch, k, WIDTH / 2f - k.width / 2f, killsY);
 
-        // compute button position so it sits below the kills text with extra top margin
         buttonX = WIDTH / 2f - BUTTON_W / 2f;
-        // place button below kills line with extra margin to avoid overlap:
         buttonY = killsY - BUTTON_TOP_MARGIN - BUTTON_H;
 
-        // Draw Play Again button
         batch.setColor(0.15f, 0.55f, 0.9f, 1f);
         batch.draw(whitePixel, buttonX, buttonY, BUTTON_W, BUTTON_H);
         batch.setColor(Color.WHITE);
 
         GlyphLayout btn = new GlyphLayout(fontMed, "Play Again");
-        // center text vertically in the button
         float textY = buttonY + BUTTON_H / 2f + btn.height / 2f;
         fontMed.setColor(Color.WHITE);
         fontMed.draw(batch, btn, buttonX + BUTTON_W / 2f - btn.width / 2f, textY);
@@ -270,7 +239,6 @@ public class Shooter extends ApplicationAdapter {
     }
 
     private void resetGame() {
-        // reset core state
         score = 0;
         enemiesSpawned = 0;
         kills = 0;
@@ -280,11 +248,9 @@ public class Shooter extends ApplicationAdapter {
         lastSpawnTime = 0;
         gameState = "playing";
 
-        // clear arrays
         bullets.clear();
         enemies.clear();
 
-        // reset player position
         player = new Player(WIDTH / 2f, HEIGHT / 2f);
 
         updateHud();
@@ -320,7 +286,6 @@ public class Shooter extends ApplicationAdapter {
         return t;
     }
 
-    // ================== INNER CLASSES ==================
     class Player {
         float x, y, angle;
         Circle circle = new Circle();
@@ -329,11 +294,9 @@ public class Shooter extends ApplicationAdapter {
         Player(float x, float y) {
             this.x = x;
             this.y = y;
-            // if playerTexture is null we fall back to circleTexture; set radius accordingly
             if (playerTexture != null) {
                 drawW = playerTexture.getWidth();
                 drawH = playerTexture.getHeight();
-                // reduce drawn size if the sprite is big (optional)
                 float scale = 1.0f;
                 if (drawW > 96) scale = 96f / drawW;
                 drawW *= scale;
@@ -369,11 +332,11 @@ public class Shooter extends ApplicationAdapter {
                 float halfH = drawH / 2f;
                 b.setColor(Color.WHITE);
                 b.draw(playerTexture,
-                        x - halfW, y - halfH,    // bottom-left
-                        halfW, halfH,            // origin (center)
-                        drawW, drawH,            // width,height
-                        1f, 1f,                  // scale
-                        angle + PLAYER_ROTATION_OFFSET, // rotation
+                        x - halfW, y - halfH,
+                        halfW, halfH,
+                        drawW, drawH,
+                        1f, 1f,
+                        angle + PLAYER_ROTATION_OFFSET,
                         0, 0, playerTexture.getWidth(), playerTexture.getHeight(),
                         false, false);
             } else {
@@ -418,18 +381,16 @@ public class Shooter extends ApplicationAdapter {
         float x, y, speed;
         Circle circle = new Circle();
         float rotationDeg = 0f;
-        float drawSize = 48f; // visual size
+        float drawSize = 48f;
 
         Enemy() {
-            // Use base speed multiplied by current multiplier so later spawned enemies are faster
             speed = ENEMY_BASE_SPEED * enemySpeedMultiplier;
             float a = MathUtils.random(0f, MathUtils.PI2);
             float d = MathUtils.random(600, 900);
             x = WIDTH / 2f + MathUtils.cos(a) * d;
             y = HEIGHT / 2f + MathUtils.sin(a) * d;
-            // set draw size based on texture size if available
             if (enemyTexture != null) {
-                drawSize = Math.min(64f, enemyTexture.getWidth()); // limit size if too large
+                drawSize = Math.min(64f, enemyTexture.getWidth());
             }
             circle.radius = drawSize * 0.4f;
             circle.setPosition(x, y);
@@ -442,7 +403,6 @@ public class Shooter extends ApplicationAdapter {
                 dir.nor().scl(speed * delta);
                 x += dir.x;
                 y += dir.y;
-                // set rotation to point at the player
                 rotationDeg = new Vector2(px - x, py - y).angleDeg();
             }
             circle.setPosition(x, y);
