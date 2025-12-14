@@ -36,8 +36,14 @@ public class Shooter extends ApplicationAdapter {
     private Texture circleTexture;
     private Texture whitePixel; // used for UI rectangles
 
-    // New: enemy rocket texture
-    private Texture enemyTexture;
+    // Textures
+    private Texture enemyTexture;   // rocket.png
+    private Texture playerTexture;  // warrior.png
+
+    // Rotation offsets (adjust depending on how the PNG is oriented)
+    // If your sprite faces up, use -90f. If it faces right, use 0f.
+    private static final float ENEMY_ROTATION_OFFSET = 0f;
+    private static final float PLAYER_ROTATION_OFFSET = 0f;
 
     // ================== GAME OBJECTS ==================
     private Player player;
@@ -79,8 +85,9 @@ public class Shooter extends ApplicationAdapter {
         circleTexture = createCircleTexture(64);
         whitePixel = createPixelTexture();
 
-        // Load your rocket texture (put rocket.png into assets folder)
+        // Load assets: put rocket.png and warrior.png in your assets folder
         enemyTexture = new Texture(Gdx.files.internal("rocket.png"));
+        playerTexture = new Texture(Gdx.files.internal("warrior.png"));
 
         player = new Player(WIDTH / 2f, HEIGHT / 2f);
         bullets = new Array<>();
@@ -180,7 +187,7 @@ public class Shooter extends ApplicationAdapter {
         batch.begin();
         player.draw(batch);
         for (Bullet b : bullets) b.draw(batch);
-        for (Enemy e : enemies) e.draw(batch); // now draws rocket texture rotated
+        for (Enemy e : enemies) e.draw(batch); // draws rocket with rotation
         for (int i = 0; i < hudCache.length; i++)
             fontSmall.draw(batch, hudCache[i], 20, HEIGHT - 20 - i * 35);
 
@@ -286,9 +293,10 @@ public class Shooter extends ApplicationAdapter {
     @Override
     public void dispose() {
         batch.dispose();
-        circleTexture.dispose();
+        if (circleTexture != null) circleTexture.dispose();
         if (whitePixel != null) whitePixel.dispose();
-        if (enemyTexture != null) enemyTexture.dispose(); // dispose the rocket texture
+        if (enemyTexture != null) enemyTexture.dispose();
+        if (playerTexture != null) playerTexture.dispose();
         fontBig.dispose();
         fontMed.dispose();
         fontSmall.dispose();
@@ -316,11 +324,25 @@ public class Shooter extends ApplicationAdapter {
     class Player {
         float x, y, angle;
         Circle circle = new Circle();
+        float drawW, drawH;
 
         Player(float x, float y) {
             this.x = x;
             this.y = y;
-            circle.radius = 24;
+            // if playerTexture is null we fall back to circleTexture; set radius accordingly
+            if (playerTexture != null) {
+                drawW = playerTexture.getWidth();
+                drawH = playerTexture.getHeight();
+                // reduce drawn size if the sprite is big (optional)
+                float scale = 1.0f;
+                if (drawW > 96) scale = 96f / drawW;
+                drawW *= scale;
+                drawH *= scale;
+                circle.radius = Math.max(drawW, drawH) * 0.4f;
+            } else {
+                drawW = drawH = 48f;
+                circle.radius = 24f;
+            }
             circle.setPosition(x, y);
         }
 
@@ -342,9 +364,23 @@ public class Shooter extends ApplicationAdapter {
         }
 
         void draw(SpriteBatch b) {
-            b.setColor(Color.GREEN);
-            b.draw(circleTexture, x - 24, y - 24, 48, 48);
-            b.setColor(Color.WHITE);
+            if (playerTexture != null) {
+                float halfW = drawW / 2f;
+                float halfH = drawH / 2f;
+                b.setColor(Color.WHITE);
+                b.draw(playerTexture,
+                        x - halfW, y - halfH,    // bottom-left
+                        halfW, halfH,            // origin (center)
+                        drawW, drawH,            // width,height
+                        1f, 1f,                  // scale
+                        angle + PLAYER_ROTATION_OFFSET, // rotation
+                        0, 0, playerTexture.getWidth(), playerTexture.getHeight(),
+                        false, false);
+            } else {
+                b.setColor(Color.GREEN);
+                b.draw(circleTexture, x - 24, y - 24, 48, 48);
+                b.setColor(Color.WHITE);
+            }
         }
     }
 
@@ -382,9 +418,7 @@ public class Shooter extends ApplicationAdapter {
         float x, y, speed;
         Circle circle = new Circle();
         float rotationDeg = 0f;
-
-        // draw size for the rocket (pixels)
-        private final float drawSize = 48f; // adjust if your rocket image is larger/smaller
+        float drawSize = 48f; // visual size
 
         Enemy() {
             // Use base speed multiplied by current multiplier so later spawned enemies are faster
@@ -393,9 +427,12 @@ public class Shooter extends ApplicationAdapter {
             float d = MathUtils.random(600, 900);
             x = WIDTH / 2f + MathUtils.cos(a) * d;
             y = HEIGHT / 2f + MathUtils.sin(a) * d;
-            circle.radius = 18;
+            // set draw size based on texture size if available
+            if (enemyTexture != null) {
+                drawSize = Math.min(64f, enemyTexture.getWidth()); // limit size if too large
+            }
+            circle.radius = drawSize * 0.4f;
             circle.setPosition(x, y);
-            // initial rotation random
             rotationDeg = MathUtils.random(0f, 360f);
         }
 
@@ -413,26 +450,17 @@ public class Shooter extends ApplicationAdapter {
 
         void draw(SpriteBatch b) {
             if (enemyTexture != null) {
-                // Draw the rocket texture rotated so it faces the player.
-                // The draw method used below sets the origin to the center of the texture
-                // and rotates by rotationDeg degrees.
                 float half = drawSize / 2f;
                 b.setColor(Color.WHITE);
                 b.draw(enemyTexture,
-                        x - half,             // x to draw (bottom-left)
-                        y - half,             // y to draw
-                        half,                 // originX (rotation origin)
-                        half,                 // originY
-                        drawSize,             // width
-                        drawSize,             // height
-                        1f,                   // scaleX
-                        1f,                   // scaleY
-                        rotationDeg,          // rotation in degrees
-                        0, 0,                // srcX, srcY
-                        enemyTexture.getWidth(), enemyTexture.getHeight(), // srcW, srcH
-                        false, false);        // flipX, flipY
+                        x - half, y - half,
+                        half, half,
+                        drawSize, drawSize,
+                        1f, 1f,
+                        rotationDeg + ENEMY_ROTATION_OFFSET,
+                        0, 0, enemyTexture.getWidth(), enemyTexture.getHeight(),
+                        false, false);
             } else {
-                // fallback: draw red circle if texture missing
                 b.setColor(Color.RED);
                 b.draw(circleTexture, x - 18, y - 18, 36, 36);
                 b.setColor(Color.WHITE);
